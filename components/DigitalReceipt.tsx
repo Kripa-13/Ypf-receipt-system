@@ -240,13 +240,6 @@ export default function DigitalReceipt({ receipt, onBack, onRefresh }: Props) {
               <span className="metaSep">:</span>
               <span className="metaValue">India</span>
             </div>
-            {receipt.ac && (
-              <div className="metaRow">
-                <span className="metaLabel">AC Code</span>
-                <span className="metaSep">:</span>
-                <span className="metaValue">{receipt.ac}</span>
-              </div>
-            )}
           </div>
 
           <div className="metaCol">

@@ -11,12 +11,12 @@ interface Props {
 
 export default function DonationForm({ onSuccess }: Props) {
   const [formData, setFormData] = useState({
-    ac: 'AC-DEL-01',
+    ac: '',
     date: new Date().toLocaleDateString('en-GB'), // DD/MM/YYYY
     contributorName: '',
     address: '',
-    district: 'Indore',
-    pinCode: '452001',
+    district: '',
+    pinCode: '',
     contactNo: '',
     panAadhaar: '',
     receiverName: 'Youth Peace Foundation',
@@ -107,41 +107,6 @@ export default function DonationForm({ onSuccess }: Props) {
     }
   };
 
-  // Load sample donor data from reference images
-  const loadSampleReference = (type: 'reference1' | 'slip2') => {
-    if (type === 'reference1') {
-      setFormData({
-        ac: 'YPF-HQ',
-        date: '27/08/2026',
-        contributorName: 'Kripa Singhal',
-        address: 'B-12, Peace Street, Civil Lines',
-        district: 'Indore',
-        pinCode: '452001',
-        contactNo: '9876543210',
-        panAadhaar: 'XXXX XXXX 1234',
-        receiverName: 'Youth Peace Foundation',
-        amount: '1000',
-        paymentMode: 'UPI / NetBanking',
-        transactionId: 'AXISNP1234567890'
-      });
-    } else {
-      setFormData({
-        ac: 'AC-DEL-02',
-        date: new Date().toLocaleDateString('en-GB'),
-        contributorName: 'Rahul Sharma',
-        address: 'X-32, Okhla Industrial Area, Phase II',
-        district: 'South Delhi',
-        pinCode: '110020',
-        contactNo: '9811223344',
-        panAadhaar: 'AAACY7098K',
-        receiverName: 'Youth Peace Foundation',
-        amount: '100',
-        paymentMode: 'UPI',
-        transactionId: 'UPI423456789012'
-      });
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
@@ -189,25 +154,6 @@ export default function DonationForm({ onSuccess }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="donationForm">
-      {/* Quick Fill Toolbar */}
-      <div className="sampleToolbar">
-        <span className="sampleLabel">⚡ Quick Fill Test Samples:</span>
-        <button
-          type="button"
-          onClick={() => loadSampleReference('reference1')}
-          className="sampleBtn"
-        >
-          Sample 1 (Image 1 Ref: ₹1,000 / Axis Bank)
-        </button>
-        <button
-          type="button"
-          onClick={() => loadSampleReference('slip2')}
-          className="sampleBtn"
-        >
-          Sample 2 (Image 2 Slip: ₹100 / UPI)
-        </button>
-      </div>
-
       {errorMessage && (
         <div className="formErrorAlert">
           <AlertCircle size={18} />
@@ -216,20 +162,7 @@ export default function DonationForm({ onSuccess }: Props) {
       )}
 
       <div className="formgrid">
-        {/* Row 1: AC and Date */}
-        <div className="field">
-          <label htmlFor="ac">AC (Area Coordinator / Center Code)</label>
-          <input
-            id="ac"
-            name="ac"
-            type="text"
-            placeholder="e.g. AC-IND-01 or Delhi Center"
-            value={formData.ac}
-            onChange={handleChange}
-          />
-          <span className="fieldHint">From paper slip top header</span>
-        </div>
-
+        {/* Row 1: Date and Contact */}
         <div className="field">
           <label htmlFor="date">Date *</label>
           <input
@@ -244,20 +177,6 @@ export default function DonationForm({ onSuccess }: Props) {
           <span className="fieldHint">Issue date of contribution</span>
         </div>
 
-        {/* Row 2: Name and Contact */}
-        <div className="field">
-          <label htmlFor="contributorName">Contributor Name *</label>
-          <input
-            id="contributorName"
-            name="contributorName"
-            type="text"
-            placeholder="Full Name of Contributor"
-            value={formData.contributorName}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
         <div className="field">
           <label htmlFor="contactNo">Contact No. *</label>
           <input
@@ -266,6 +185,20 @@ export default function DonationForm({ onSuccess }: Props) {
             type="tel"
             placeholder="10-digit mobile number"
             value={formData.contactNo}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        {/* Row 2: Contributor Name */}
+        <div className="field full">
+          <label htmlFor="contributorName">Contributor Name *</label>
+          <input
+            id="contributorName"
+            name="contributorName"
+            type="text"
+            placeholder="Full Name of Contributor"
+            value={formData.contributorName}
             onChange={handleChange}
             required
           />

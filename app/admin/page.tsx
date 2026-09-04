@@ -357,7 +357,7 @@ export default function AdminPage() {
                   <th>Date</th>
                   <th>Donor Name</th>
                   <th>Contact</th>
-                  <th>District / AC</th>
+                  <th>District</th>
                   <th>Amount (₹)</th>
                   <th>Mode / UTR</th>
                   <th>Bank Status</th>
@@ -382,7 +382,6 @@ export default function AdminPage() {
                       <td>{r.contact_no}</td>
                       <td>
                         <div>{r.district}</div>
-                        {r.ac && <span className="acBadge">{r.ac}</span>}
                       </td>
                       <td>
                         <strong className="cellAmount">
