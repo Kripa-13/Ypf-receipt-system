@@ -2,9 +2,10 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import QRCode from 'qrcode';
-import { Download, Printer, CheckCircle2, Clock, AlertTriangle, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { Download, Printer, CheckCircle2, Clock, AlertTriangle, ArrowLeft, ShieldCheck, FileText } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 export interface ReceiptData {
   id?: number;
@@ -37,11 +38,11 @@ interface Props {
 export default function DigitalReceipt({ receipt, onBack, onRefresh }: Props) {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [bankMsg, setBankMsg] = useState<string | null>(null);
   const receiptRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Generate QR Code with verification link
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://ypf.org.in';
     const verifyUrl = `${origin}/verify/${encodeURIComponent(receipt.receipt_no)}`;
 
@@ -54,7 +55,6 @@ export default function DigitalReceipt({ receipt, onBack, onRefresh }: Props) {
       }
     }).then(url => setQrDataUrl(url)).catch(err => console.error(err));
 
-    // Trigger celebratory confetti on receipt view
     confetti({
       particleCount: 50,
       spread: 60,
@@ -64,6 +64,33 @@ export default function DigitalReceipt({ receipt, onBack, onRefresh }: Props) {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!receiptRef.current) return;
+    setIsGeneratingPdf(true);
+    try {
+      const canvas = await html2canvas(receiptRef.current, {
+        scale: 2.5,
+        useCORS: true,
+        backgroundColor: '#ffffff'
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Receipt_${receipt.receipt_no}.pdf`);
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+      alert('Error generating PDF. You can also click "Print Receipt" and choose Save as PDF.');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   const handleDownloadImage = async () => {
@@ -121,6 +148,9 @@ export default function DigitalReceipt({ receipt, onBack, onRefresh }: Props) {
             <ArrowLeft size={16} /> Create Another
           </button>
         )}
+        <button onClick={handleDownloadPdf} disabled={isGeneratingPdf} className="btn pdfDownloadBtn">
+          <FileText size={16} /> {isGeneratingPdf ? 'Generating PDF...' : 'Download PDF'}
+        </button>
         <button onClick={handlePrint} className="btn">
           <Printer size={16} /> Print Receipt
         </button>
@@ -153,8 +183,18 @@ export default function DigitalReceipt({ receipt, onBack, onRefresh }: Props) {
             <img
               src="/ypf-logo.png"
               alt="Youth Peace Foundation"
-              style={{ width: '280px', height: 'auto', margin: '0 auto 10px', display: 'block', objectFit: 'contain' }}
+              style={{ width: '260px', height: 'auto', margin: '0 auto 6px', display: 'block', objectFit: 'contain' }}
             />
+          </div>
+
+          {/* Organization Legal & Registration Details */}
+          <div className="receiptOrgMetaBox">
+            <div className="receiptOrgAddress">X-32, Basement, Okhla Industrial Area, Phase II, Delhi - 110020</div>
+            <div className="receiptOrgReg">
+              <span>Registration No. <strong>AAACY7098KE20198</strong></span> &nbsp;|&nbsp; 
+              <span>PAN No. <strong>AAACY7098K</strong></span>
+            </div>
+            <div className="receiptOrgCin">CIN: <strong>U93000DL2014NPL271796</strong></div>
           </div>
 
           {/* Diamond Line Divider */}
@@ -335,8 +375,10 @@ export default function DigitalReceipt({ receipt, onBack, onRefresh }: Props) {
             www.ypf.org.in &nbsp;|&nbsp; contact@ypf.org.in &nbsp;|&nbsp; +91 12345 67890
           </div>
           <div className="footerTaxExempt">
-            Donations exempt from income tax 1961 u/s 11-Clause (i) of first proviso to sub-section (5) of section 80G vide Registration no. AAACY7098KF20212 dated 24 Feb, 2022.<br />
-            PAN: AAACY7098K &nbsp;|&nbsp; CIN: U93000DL2014NPL271796 &nbsp;|&nbsp; Reg No. AAACY7098KE20198
+            <strong>YOUTH PEACE FOUNDATION</strong><br />
+            X-32, Basement, Okhla Industrial Area, Phase II, Delhi - 110020<br />
+            Registration No. <strong>AAACY7098KE20198</strong> &nbsp;|&nbsp; PAN No. <strong>AAACY7098K</strong> &nbsp;|&nbsp; CIN: <strong>U93000DL2014NPL271796</strong><br />
+            Donations exempt from income tax 1961 u/s 11-Clause (i) of first proviso to sub-section (5) of section 80G vide Registration no. AAACY7098KF20212 dated 24 Feb, 2022.
           </div>
           <div className="footerDisclaimer">
             This is a system generated receipt and does not require any physical signature.<br />
