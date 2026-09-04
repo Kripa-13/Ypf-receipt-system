@@ -1471,3 +1471,311 @@ a {
 .logoutBtn:hover {
   background: #fecaca !important;
 }
+
+/* =======================================================
+   MOBILE VIEW & ACCESSIBILITY OPTIMIZATIONS
+======================================================= */
+
+/* Mobile view: Screen width <= 768px */
+@media (max-width: 768px) {
+  /* Navigation */
+  .top {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .brand img {
+    height: 32px !important;
+  }
+
+  .top nav {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .top a {
+    margin-left: 0;
+    padding: 8px 14px;
+    font-size: 13px;
+    min-width: auto;
+    flex: 1;
+    text-align: center;
+  }
+
+  /* Form & Main Section */
+  .contributionSection {
+    padding: 20px 14px 50px;
+  }
+
+  .sectionHeading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+
+  .sectionHeading h2 {
+    font-size: 26px;
+  }
+
+  .sectionHeading p {
+    font-size: 14px;
+  }
+
+  .topActionsGroup {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .formCard {
+    padding: 20px 14px;
+    border-radius: 18px;
+  }
+
+  /* Quick Fill Toolbar */
+  .sampleToolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .sampleBtn {
+    width: 100%;
+    text-align: center;
+    padding: 8px;
+  }
+
+  /* Form Inputs (16px prevents iOS zoom) */
+  .field input,
+  .field textarea,
+  .field select {
+    font-size: 16px !important;
+    padding: 12px;
+  }
+
+  /* Amount Presets */
+  .amountPresets {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .presetBtn {
+    min-height: 42px;
+    padding: 10px 6px;
+    font-size: 14px;
+  }
+
+  /* UTR Input Group */
+  .utrInputGroup {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .bankVerifyButton {
+    min-height: 44px;
+    justify-content: center;
+    width: 100%;
+    font-size: 14px;
+  }
+
+  .submitBtn {
+    min-height: 52px;
+    font-size: 16px;
+  }
+
+  /* Digital Receipt on Mobile */
+  .digitalReceiptDoc {
+    padding: 18px 12px 20px;
+    border-radius: 12px;
+    box-shadow: none;
+    border: 1.5px solid #1e5631;
+  }
+
+  .officialLogoContainer img {
+    width: 210px !important;
+  }
+
+  .receiptTitle {
+    font-size: 15px;
+    letter-spacing: 0.5px;
+  }
+
+  .missionTagline {
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  /* Metadata Card: Stacks neatly on mobile */
+  .metadataCard {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .metaRow {
+    font-size: 12px;
+  }
+
+  .metaLabel {
+    width: 110px;
+    font-size: 11.5px;
+  }
+
+  /* Tables transform into stacked readable cards on mobile */
+  .tableRow {
+    flex-direction: column;
+    border-bottom: 1px solid #d5e2d8;
+  }
+
+  .tableCell {
+    width: 100% !important;
+    border-right: none !important;
+    padding: 6px 10px;
+  }
+
+  .cellLabel {
+    background: #f0f7f2;
+    font-weight: 700;
+    font-size: 11px;
+    color: #1e5631;
+    border-bottom: 1px dashed #e2ede5;
+  }
+
+  .cellVal {
+    font-size: 13px;
+    padding-bottom: 8px;
+  }
+
+  /* QR Code & Signatory */
+  .qrSignatureRow {
+    flex-direction: column-reverse;
+    align-items: center;
+    gap: 18px;
+    padding: 12px 6px 14px;
+  }
+
+  .signatureBox {
+    width: 100%;
+    max-width: 180px;
+  }
+
+  /* Receipt Actions Bar */
+  .receiptActionsBar {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .receiptActionsBar .btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  /* Admin Dashboard Mobile */
+  .adminDashboard {
+    padding: 20px 14px;
+  }
+
+  .adminTopBar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .adminTopBar h1 {
+    font-size: 24px;
+  }
+
+  .adminActionButtons {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .adminActionButtons .btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .statCard {
+    padding: 12px 14px;
+  }
+
+  .statValue {
+    font-size: 20px;
+  }
+
+  .adminFilterBar {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .adminSearchForm {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .filterControls {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .statusSelect {
+    width: 100%;
+  }
+
+  .filterControls .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .refreshBtn {
+    display: none;
+  }
+
+  /* Admin Login Mobile */
+  .adminLoginWrapper {
+    padding: 20px 14px;
+    min-height: auto;
+  }
+
+  .adminLoginCard {
+    padding: 24px 18px;
+    border-radius: 20px;
+  }
+
+  .adminLoginHeader img {
+    width: 180px !important;
+  }
+
+  .adminLoginHeader h2 {
+    font-size: 22px;
+  }
+}
+
+/* Extra Small Phones: Screen width <= 400px */
+@media (max-width: 400px) {
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .amountPresets {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

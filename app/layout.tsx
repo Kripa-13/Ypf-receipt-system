@@ -1,10 +1,17 @@
 import './globals.css';
 import Link from 'next/link';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 
 export const metadata: Metadata = {
   title: 'Youth Peace Foundation | Digital Receipt System',
   description: 'Official Digital Contribution Receipt & Bank Verification System for Youth Peace Foundation',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: '#0d2237'
 };
 
 export default function RootLayout({
