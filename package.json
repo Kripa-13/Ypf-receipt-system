@@ -1,0 +1,35 @@
+{
+  "name": "ypf-receipt-system",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/node": "^26.4.1",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.18.0",
+    "canvas-confetti": "^1.9.4",
+    "html2canvas": "^1.4.1",
+    "lucide-react": "^1.41.0",
+    "next": "^14.2.35",
+    "qrcode": "^1.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "xlsx": "^0.18.5"
+  }
+}
