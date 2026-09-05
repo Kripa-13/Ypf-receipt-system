@@ -367,37 +367,19 @@ export default function DigitalReceipt({ receipt, onBack, onRefresh }: Props) {
           <p className="ty2">Your support helps us create a better and more peaceful tomorrow.</p>
         </div>
 
-        {/* QR Code and Signatory Row */}
-        <div className="qrSignatureRow">
-          <div className="qrBox">
-            {qrDataUrl ? (
-              <img src={qrDataUrl} alt="Verify Receipt QR Code" className="qrCodeImg" />
-            ) : (
-              <div className="qrPlaceholder">QR Code</div>
-            )}
-          </div>
-
-          <div className="signatureBox">
-            <div className="signGraphic">
-              <svg viewBox="0 0 160 55" width="130" height="45">
-                <path
-                  d="M10 38 Q 28 8, 48 32 T 75 14 Q 92 42, 115 18 T 145 28"
-                  fill="none"
-                  stroke="#1c3b28"
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M40 38 C 60 48, 120 46, 150 42"
-                  fill="none"
-                  stroke="#1c3b28"
-                  strokeWidth="1.8"
-                />
-              </svg>
+        {/* QR Code Row (Signature removed per requirement) */}
+        <div className="qrSignatureRow" style={{ justifyContent: 'center' }}>
+          <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div className="qrBox">
+              {qrDataUrl ? (
+                <img src={qrDataUrl} alt="Verify Receipt QR Code" className="qrCodeImg" />
+              ) : (
+                <div className="qrPlaceholder">QR Code</div>
+              )}
             </div>
-            <div className="signBorderLine" />
-            <div className="signLabel">Authorized Signatory</div>
-            <div className="signOrg">Youth Peace Foundation</div>
+            <span style={{ fontSize: '10.5px', color: '#1e5631', fontWeight: 600, marginTop: '4px', letterSpacing: '0.3px' }}>
+              Scan QR Code to Verify Authenticity
+            </span>
           </div>
         </div>
 

@@ -1129,8 +1129,8 @@ a {
 .pdfExportMode .qrSignatureRow {
   display: flex !important;
   flex-direction: row !important;
-  justify-content: space-between !important;
-  align-items: flex-end !important;
+  justify-content: center !important;
+  align-items: center !important;
   padding: 4px 8px 8px !important;
 }
 
@@ -1683,7 +1683,8 @@ a {
   .qrSignatureRow {
     display: flex !important;
     flex-direction: row !important;
-    justify-content: space-between !important;
+    justify-content: center !important;
+    align-items: center !important;
   }
 
   .statusVerified {
@@ -1983,15 +1984,10 @@ a {
 
   /* QR Code & Signatory */
   .qrSignatureRow {
-    flex-direction: column-reverse;
+    flex-direction: row;
+    justify-content: center;
     align-items: center;
-    gap: 18px;
-    padding: 12px 6px 14px;
-  }
-
-  .signatureBox {
-    width: 100%;
-    max-width: 180px;
+    padding: 10px 6px 12px;
   }
 
   /* Receipt Actions Bar */
