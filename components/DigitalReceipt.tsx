@@ -71,19 +71,50 @@ export default function DigitalReceipt({ receipt, onBack, onRefresh }: Props) {
     setIsGeneratingPdf(true);
     try {
       const canvas = await html2canvas(receiptRef.current, {
-        scale: 2.5,
+        scale: 2,
         useCORS: true,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        windowWidth: 1200,
+        scrollX: 0,
+        scrollY: 0,
+        onclone: (clonedDoc) => {
+          const el = clonedDoc.getElementById('printable-receipt');
+          if (el) {
+            el.classList.add('pdfExportMode');
+          }
+        }
       });
+
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4'
       });
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+
+      const pageWidth = pdf.internal.pageSize.getWidth(); // 210 mm
+      const pageHeight = pdf.internal.pageSize.getHeight(); // 297 mm
+
+      // 8mm safe margins on all sides
+      const margin = 8;
+      const printableWidth = pageWidth - 2 * margin; // 194 mm
+      const printableHeight = pageHeight - 2 * margin; // 281 mm
+
+      // Scale to fit printable width first
+      let imgWidth = printableWidth;
+      let imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      // If the rendered receipt height exceeds printable height, scale down to fit on single page
+      if (imgHeight > printableHeight) {
+        imgHeight = printableHeight;
+        imgWidth = (canvas.width * imgHeight) / canvas.height;
+      }
+
+      // Center the receipt perfectly on the single A4 page
+      const x = (pageWidth - imgWidth) / 2;
+      const y = (pageHeight - imgHeight) / 2;
+
+      pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight, undefined, 'FAST');
       pdf.save(`Receipt_${receipt.receipt_no}.pdf`);
     } catch (err) {
       console.error('Error generating PDF:', err);
@@ -99,7 +130,16 @@ export default function DigitalReceipt({ receipt, onBack, onRefresh }: Props) {
       const canvas = await html2canvas(receiptRef.current, {
         scale: 2,
         useCORS: true,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        windowWidth: 1200,
+        scrollX: 0,
+        scrollY: 0,
+        onclone: (clonedDoc) => {
+          const el = clonedDoc.getElementById('printable-receipt');
+          if (el) {
+            el.classList.add('pdfExportMode');
+          }
+        }
       });
       const link = document.createElement('a');
       link.download = `Receipt_${receipt.receipt_no}.png`;
