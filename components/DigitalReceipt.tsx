@@ -6,6 +6,7 @@ import { Download, Printer, CheckCircle2, Clock, AlertTriangle, ArrowLeft, Shiel
 import confetti from 'canvas-confetti';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { encodeReceiptToken } from '@/lib/receipt-token';
 
 export interface ReceiptData {
   id?: number;
@@ -44,7 +45,8 @@ export default function DigitalReceipt({ receipt, onBack, onRefresh }: Props) {
 
   useEffect(() => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://ypf.org.in';
-    const verifyUrl = `${origin}/verify/${encodeURIComponent(receipt.receipt_no)}`;
+    const token = encodeReceiptToken(receipt);
+    const verifyUrl = `${origin}/verify/${encodeURIComponent(receipt.receipt_no)}?t=${token}`;
 
     QRCode.toDataURL(verifyUrl, {
       width: 140,
@@ -60,7 +62,7 @@ export default function DigitalReceipt({ receipt, onBack, onRefresh }: Props) {
       spread: 60,
       origin: { y: 0.7 }
     });
-  }, [receipt.receipt_no]);
+  }, [receipt]);
 
   const handlePrint = () => {
     window.print();

@@ -1,33 +1,57 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import DigitalReceipt, { ReceiptData } from '@/components/DigitalReceipt';
 import Link from 'next/link';
 import { ShieldCheck, AlertCircle, ArrowLeft } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { decodeReceiptToken } from '@/lib/receipt-token';
 
-export default function VerifyReceiptPage({ params }: { params: { receiptNo: string } }) {
+function VerifyReceiptContent({ receiptNo }: { receiptNo: string }) {
+  const searchParams = useSearchParams();
+  const token = searchParams.get('t') || searchParams.get('token');
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadReceipt() {
+      // 1. Try querying the database API first
       try {
-        const res = await fetch(`/api/receipts/${encodeURIComponent(params.receiptNo)}`);
+        const res = await fetch(`/api/receipts/${encodeURIComponent(receiptNo)}`);
         const data = await res.json();
         if (data.success && data.receipt) {
           setReceipt(data.receipt);
-        } else {
-          setError(data.error || 'Receipt not found in the official records');
+          setLoading(false);
+          return;
         }
-      } catch (err: any) {
-        setError('Error verifying receipt: ' + err.message);
-      } finally {
-        setLoading(false);
+      } catch (err) {
+        console.warn('Database fetch attempt failed, checking fallback token:', err);
       }
+
+      // 2. If not found in this serverless container's DB, fallback to decoded QR token
+      if (token) {
+        const decoded = decodeReceiptToken(token);
+        if (decoded) {
+          setReceipt(decoded);
+          setLoading(false);
+
+          // Asynchronously sync back to database so future direct lookups find it
+          fetch('/api/receipts/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(decoded)
+          }).catch(e => console.error('Sync failed:', e));
+          return;
+        }
+      }
+
+      setError('Receipt not found in official records');
+      setLoading(false);
     }
+
     loadReceipt();
-  }, [params.receiptNo]);
+  }, [receiptNo, token]);
 
   if (loading) {
     return (
@@ -74,5 +98,17 @@ export default function VerifyReceiptPage({ params }: { params: { receiptNo: str
         />
       </div>
     </div>
+  );
+}
+
+export default function VerifyReceiptPage({ params }: { params: { receiptNo: string } }) {
+  return (
+    <Suspense fallback={
+      <div className="container" style={{ textAlign: 'center', padding: '100px 20px' }}>
+        <h2>Verifying Receipt authenticity with Youth Peace Foundation...</h2>
+      </div>
+    }>
+      <VerifyReceiptContent receiptNo={params.receiptNo} />
+    </Suspense>
   );
 }
