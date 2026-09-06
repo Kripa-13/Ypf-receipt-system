@@ -298,8 +298,7 @@ export default function DigitalReceipt({ receipt, onBack }: Props) {
           <div className="footerTaxExempt">
             <strong>YOUTH PEACE FOUNDATION</strong><br />
             X-32, Basement, Okhla Industrial Area, Phase II, Delhi - 110020<br />
-            PAN No. <strong>AAACY7098K</strong> &nbsp;|&nbsp; CIN: <strong>U93000DL2014NPL271796</strong><br />
-            Donations exempt from income tax 1961 u/s 11-Clause (i) of first proviso to sub-section (5) of section 80G dated 24 Feb, 2022.
+            PAN No. <strong>AAACY7098K</strong> &nbsp;|&nbsp; CIN: <strong>U93000DL2014NPL271796</strong>
           </div>
           <div className="footerDisclaimer">
             This is a system generated receipt and does not require any physical signature.<br />
