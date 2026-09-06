@@ -22,15 +22,15 @@ export default function Home() {
 
             <p>
               {generatedReceipt
-                ? 'Your verified contribution receipt is ready. You can print, download as image, or verify bank status below.'
-                : 'Enter the paper slip details below to generate a verified digital receipt.'}
+                ? 'Your official contribution receipt is ready. You can print, download as image or PDF below.'
+                : 'Enter the contribution details below to generate an official digital receipt.'}
             </p>
           </div>
 
           <div className="topActionsGroup no-print">
             <div className="secureLabel">
               <span>🔒</span>
-              Concurrent Unique ID &amp; Bank Verified
+              Concurrent Unique Sequential ID
             </div>
             <Link href="/admin" className="adminQuickBtn">
               <FileSpreadsheet size={15} /> Admin Excel Sheet
