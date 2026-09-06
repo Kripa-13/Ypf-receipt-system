@@ -1,12 +1,10 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import QRCode from 'qrcode';
-import { Download, Printer, CheckCircle2, Clock, AlertTriangle, ArrowLeft, ShieldCheck, FileText } from 'lucide-react';
+import { Download, Printer, ArrowLeft, FileText } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { encodeReceiptToken } from '@/lib/receipt-token';
 
 export interface ReceiptData {
   id?: number;
@@ -25,7 +23,7 @@ export interface ReceiptData {
   amount_words: string;
   payment_mode: string;
   transaction_id?: string | null;
-  verification_status: 'VERIFIED' | 'PENDING' | 'FAILED' | string;
+  verification_status?: string;
   bank_transaction_date?: string | null;
   verification_reference?: string | null;
 }
@@ -36,27 +34,11 @@ interface Props {
   onRefresh?: (updatedReceipt: ReceiptData) => void;
 }
 
-export default function DigitalReceipt({ receipt, onBack, onRefresh }: Props) {
-  const [qrDataUrl, setQrDataUrl] = useState<string>('');
-  const [isVerifying, setIsVerifying] = useState(false);
+export default function DigitalReceipt({ receipt, onBack }: Props) {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [bankMsg, setBankMsg] = useState<string | null>(null);
   const receiptRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://ypf.org.in';
-    const token = encodeReceiptToken(receipt);
-    const verifyUrl = `${origin}/verify/${encodeURIComponent(receipt.receipt_no)}?t=${token}`;
-
-    QRCode.toDataURL(verifyUrl, {
-      width: 140,
-      margin: 1,
-      color: {
-        dark: '#1e3d2f',
-        light: '#ffffff'
-      }
-    }).then(url => setQrDataUrl(url)).catch(err => console.error(err));
-
     confetti({
       particleCount: 50,
       spread: 60,
@@ -152,35 +134,6 @@ export default function DigitalReceipt({ receipt, onBack, onRefresh }: Props) {
     }
   };
 
-  const handleVerifyBankNow = async () => {
-    if (!receipt.transaction_id) {
-      alert('No Transaction ID/UTR on this receipt.');
-      return;
-    }
-    setIsVerifying(true);
-    setBankMsg(null);
-    try {
-      const res = await fetch(`/api/receipts/${receipt.receipt_no}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'verify_bank' })
-      });
-      const data = await res.json();
-      if (data.success && data.receipt) {
-        setBankMsg('Bank Verification Successful! Transaction Settled.');
-        if (onRefresh) onRefresh(data.receipt);
-      } else {
-        setBankMsg(data.message || 'Verification could not be settled by bank.');
-      }
-    } catch (err: any) {
-      setBankMsg('Verification error: ' + err.message);
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  const isVerified = receipt.verification_status === 'VERIFIED';
-
   return (
     <div className="receiptWrapper">
       {/* Action Controls Bar */}
@@ -199,24 +152,9 @@ export default function DigitalReceipt({ receipt, onBack, onRefresh }: Props) {
         <button onClick={handleDownloadImage} className="btn gold">
           <Download size={16} /> Download Image (PNG)
         </button>
-        {!isVerified && receipt.transaction_id && (
-          <button
-            onClick={handleVerifyBankNow}
-            disabled={isVerifying}
-            className="btn verifyBankBtn"
-          >
-            <ShieldCheck size={16} /> {isVerifying ? 'Verifying with Bank...' : 'Verify Amount with Bank'}
-          </button>
-        )}
       </div>
 
-      {bankMsg && (
-        <div className={`bankAlertNotice no-print ${isVerified ? 'successNotice' : 'warnNotice'}`}>
-          {bankMsg}
-        </div>
-      )}
-
-      {/* The Printable / Downloadable Digital Receipt matching Image 1 */}
+      {/* The Printable / Downloadable Digital Receipt */}
       <div className="digitalReceiptDoc" ref={receiptRef} id="printable-receipt">
         {/* Header: Logo and Title */}
         <div className="receiptHeader">
@@ -229,14 +167,13 @@ export default function DigitalReceipt({ receipt, onBack, onRefresh }: Props) {
             />
           </div>
 
-          {/* Organization Legal & Registration Details */}
+          {/* Organization Legal Details (Registration number removed per request) */}
           <div className="receiptOrgMetaBox">
             <div className="receiptOrgAddress">X-32, Basement, Okhla Industrial Area, Phase II, Delhi - 110020</div>
             <div className="receiptOrgReg">
-              <span>Registration No. <strong>AAACY7098KE20198</strong></span> &nbsp;|&nbsp; 
-              <span>PAN No. <strong>AAACY7098K</strong></span>
+              <span>PAN No. <strong>AAACY7098K</strong></span> &nbsp;|&nbsp; 
+              <span>CIN: <strong>U93000DL2014NPL271796</strong></span>
             </div>
-            <div className="receiptOrgCin">CIN: <strong>U93000DL2014NPL271796</strong></div>
           </div>
 
           {/* Diamond Line Divider */}
@@ -259,7 +196,7 @@ export default function DigitalReceipt({ receipt, onBack, onRefresh }: Props) {
           </div>
         </div>
 
-        {/* Metadata Card: 2 Columns */}
+        {/* Metadata Card: 2 Clean Balanced Columns */}
         <div className="metadataCard">
           <div className="metaCol">
             <div className="metaRow">
@@ -277,11 +214,6 @@ export default function DigitalReceipt({ receipt, onBack, onRefresh }: Props) {
               <span className="metaSep">:</span>
               <span className="metaValue">Youth Peace Foundation</span>
             </div>
-            <div className="metaRow">
-              <span className="metaLabel">Place of Issue</span>
-              <span className="metaSep">:</span>
-              <span className="metaValue">India</span>
-            </div>
           </div>
 
           <div className="metaCol">
@@ -291,26 +223,14 @@ export default function DigitalReceipt({ receipt, onBack, onRefresh }: Props) {
               <strong className="metaValue metaContribId">{receipt.contribution_id}</strong>
             </div>
             <div className="metaRow">
-              <span className="metaLabel">Verification Status</span>
+              <span className="metaLabel">Payment Mode</span>
               <span className="metaSep">:</span>
-              <span className={`metaValue statusBadge ${isVerified ? 'statusVerified' : 'statusPending'}`}>
-                {receipt.verification_status}
-              </span>
+              <span className="metaValue">{receipt.payment_mode}</span>
             </div>
             <div className="metaRow">
               <span className="metaLabel">Transaction ID / UTR</span>
               <span className="metaSep">:</span>
               <span className="metaValue metaMono">{receipt.transaction_id || '-'}</span>
-            </div>
-            <div className="metaRow">
-              <span className="metaLabel">Transaction Date (Bank)</span>
-              <span className="metaSep">:</span>
-              <span className="metaValue">{receipt.bank_transaction_date || '-'}</span>
-            </div>
-            <div className="metaRow">
-              <span className="metaLabel">Verification Reference</span>
-              <span className="metaSep">:</span>
-              <span className="metaValue">{receipt.verification_reference || '-'}</span>
             </div>
           </div>
         </div>
@@ -367,23 +287,7 @@ export default function DigitalReceipt({ receipt, onBack, onRefresh }: Props) {
           <p className="ty2">Your support helps us create a better and more peaceful tomorrow.</p>
         </div>
 
-        {/* QR Code Row (Signature removed per requirement) */}
-        <div className="qrSignatureRow" style={{ justifyContent: 'center' }}>
-          <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div className="qrBox">
-              {qrDataUrl ? (
-                <img src={qrDataUrl} alt="Verify Receipt QR Code" className="qrCodeImg" />
-              ) : (
-                <div className="qrPlaceholder">QR Code</div>
-              )}
-            </div>
-            <span style={{ fontSize: '10.5px', color: '#1e5631', fontWeight: 600, marginTop: '4px', letterSpacing: '0.3px' }}>
-              Scan QR Code to Verify Authenticity
-            </span>
-          </div>
-        </div>
-
-        {/* Footer Organization & Legal Information */}
+        {/* Footer Organization & Legal Information (Registration numbers removed per request) */}
         <div className="receiptFooter">
           <div className="footerDivider" />
           <div className="footerOrgName">YOUTH PEACE FOUNDATION</div>
@@ -394,8 +298,8 @@ export default function DigitalReceipt({ receipt, onBack, onRefresh }: Props) {
           <div className="footerTaxExempt">
             <strong>YOUTH PEACE FOUNDATION</strong><br />
             X-32, Basement, Okhla Industrial Area, Phase II, Delhi - 110020<br />
-            Registration No. <strong>AAACY7098KE20198</strong> &nbsp;|&nbsp; PAN No. <strong>AAACY7098K</strong> &nbsp;|&nbsp; CIN: <strong>U93000DL2014NPL271796</strong><br />
-            Donations exempt from income tax 1961 u/s 11-Clause (i) of first proviso to sub-section (5) of section 80G vide Registration no. AAACY7098KF20212 dated 24 Feb, 2022.
+            PAN No. <strong>AAACY7098K</strong> &nbsp;|&nbsp; CIN: <strong>U93000DL2014NPL271796</strong><br />
+            Donations exempt from income tax 1961 u/s 11-Clause (i) of first proviso to sub-section (5) of section 80G dated 24 Feb, 2022.
           </div>
           <div className="footerDisclaimer">
             This is a system generated receipt and does not require any physical signature.<br />

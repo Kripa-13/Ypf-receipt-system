@@ -36,7 +36,7 @@ export function encodeReceiptToken(r: ReceiptData): string {
     w: r.amount_words,
     m: r.payment_mode,
     utr: r.transaction_id || '',
-    st: r.verification_status,
+    st: r.verification_status || 'ISSUED',
     bdt: r.bank_transaction_date || '-',
     ref: r.verification_reference || '-'
   };

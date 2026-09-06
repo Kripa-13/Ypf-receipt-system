@@ -25,9 +25,6 @@ export async function GET() {
       'Amount in Words': r.amount_words,
       'Payment Mode': r.payment_mode,
       'Transaction ID / UTR': r.transaction_id || '-',
-      'Bank Verification Status': r.verification_status,
-      'Bank Transaction Date': r.bank_transaction_date || '-',
-      'Bank Verification Ref': r.verification_reference || '-',
       'Receiver Name': r.receiver_name,
       'Registered At': r.created_at
     }));
@@ -48,9 +45,6 @@ export async function GET() {
       { wch: 22 },
       { wch: 35 },
       { wch: 14 },
-      { wch: 22 },
-      { wch: 24 },
-      { wch: 22 },
       { wch: 22 },
       { wch: 22 },
       { wch: 24 }

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Download, Search, RefreshCw, CheckCircle2, Clock, AlertTriangle, ShieldCheck, ExternalLink, PlusCircle, Lock, LogOut, Eye, EyeOff } from 'lucide-react';
+import { Download, Search, RefreshCw, PlusCircle, Lock, LogOut, Eye, EyeOff, ExternalLink } from 'lucide-react';
 import { ReceiptData } from '@/components/DigitalReceipt';
 
 export default function AdminPage() {
@@ -15,9 +15,6 @@ export default function AdminPage() {
   const [receipts, setReceipts] = useState<ReceiptData[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [verifyingId, setVerifyingId] = useState<string | null>(null);
-  const [reconcileNotice, setReconcileNotice] = useState<string | null>(null);
 
   // Check auth session on mount
   useEffect(() => {
@@ -76,7 +73,6 @@ export default function AdminPage() {
     try {
       const params = new URLSearchParams();
       if (search) params.set('search', search);
-      if (statusFilter) params.set('status', statusFilter);
 
       const res = await fetch(`/api/receipts?${params.toString()}`);
       const data = await res.json();
@@ -94,68 +90,15 @@ export default function AdminPage() {
     if (isAuthenticated) {
       fetchReceipts();
     }
-  }, [isAuthenticated, statusFilter]);
+  }, [isAuthenticated]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     fetchReceipts();
   };
 
-  // Direct Bank Verification for an item from Admin Dashboard
-  const handleVerifyBankItem = async (receiptNo: string) => {
-    setVerifyingId(receiptNo);
-    setReconcileNotice(null);
-    try {
-      const res = await fetch(`/api/receipts/${receiptNo}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'verify_bank' })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setReconcileNotice(`Receipt ${receiptNo} successfully verified directly with the bank!`);
-        fetchReceipts();
-      } else {
-        setReconcileNotice(`Bank verification notice for ${receiptNo}: ${data.message || 'Could not verify'}`);
-      }
-    } catch (err: any) {
-      setReconcileNotice(`Verification failed: ${err.message}`);
-    } finally {
-      setVerifyingId(null);
-    }
-  };
-
-  // Bulk Bank Reconciliation
-  const handleBulkReconcileAll = async () => {
-    const pendingList = receipts.filter(r => r.verification_status !== 'VERIFIED' && r.transaction_id);
-    if (pendingList.length === 0) {
-      setReconcileNotice('No pending receipts with UTRs to reconcile.');
-      return;
-    }
-
-    setLoading(true);
-    let verifiedCount = 0;
-    for (const item of pendingList) {
-      try {
-        const res = await fetch(`/api/receipts/${item.receipt_no}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'verify_bank' })
-        });
-        const data = await res.json();
-        if (data.success) verifiedCount++;
-      } catch {
-        // continue
-      }
-    }
-    setReconcileNotice(`Bulk bank reconciliation completed: ${verifiedCount} of ${pendingList.length} receipts verified!`);
-    fetchReceipts();
-  };
-
   // Calculations
   const totalCollected = receipts.reduce((sum, r) => sum + (r.amount || 0), 0);
-  const totalVerifiedCount = receipts.filter(r => r.verification_status === 'VERIFIED').length;
-  const totalPendingCount = receipts.filter(r => r.verification_status !== 'VERIFIED').length;
 
   // 1. Checking auth state
   if (isAuthenticated === null) {
@@ -169,52 +112,60 @@ export default function AdminPage() {
   // 2. Not Authenticated: Render Password Protection Login Screen
   if (!isAuthenticated) {
     return (
-      <div className="adminLoginWrapper">
+      <div className="adminLoginWrapper container">
         <div className="adminLoginCard">
           <div className="adminLoginHeader">
-            <img
-              src="/ypf-logo.png"
-              alt="Youth Peace Foundation"
-              style={{ width: '220px', height: 'auto', margin: '0 auto 18px', display: 'block' }}
-            />
-            <div className="lockIconCircle">
-              <Lock size={24} />
+            <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
+              <img
+                src="/ypf-logo.png"
+                alt="Youth Peace Foundation"
+                style={{ width: '220px', height: 'auto', display: 'block', objectFit: 'contain' }}
+              />
             </div>
-            <span className="sectionEyebrow">RESTRICTED PORTAL</span>
-            <h2>Admin Authentication</h2>
-            <p>Please enter the administrative password to access receipts, accounting registers, and bank reconciliation.</p>
+            <div className="lockIconCircle">
+              <Lock size={28} />
+            </div>
+            <h2>Admin Portal Login</h2>
+            <p>Enter the administrator password to access official receipts &amp; Excel registers.</p>
           </div>
 
           {loginError && (
             <div className="formErrorAlert">
-              <AlertTriangle size={18} />
               <span>{loginError}</span>
             </div>
           )}
 
           <form onSubmit={handleLogin} className="adminLoginForm">
             <div className="field">
-              <label htmlFor="adminPassword">Admin Password</label>
-              <input
-                id="adminPassword"
-                type="password"
-                placeholder="Enter password"
-                value={passwordInput}
-                onChange={(e) => setPasswordInput(e.target.value)}
-                required
-                autoFocus
-                autoComplete="current-password"
-                style={{ padding: '14px', fontSize: '15px' }}
-              />
+              <label htmlFor="adminPassword">Administrator Password</label>
+              <div className="passwordInputGroup">
+                <input
+                  id="adminPassword"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Enter administrator password"
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  required
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="showPassBtn"
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <button
               type="submit"
               disabled={isLoggingIn}
               className="btn submitBtn"
-              style={{ marginTop: '20px' }}
+              style={{ marginTop: '16px' }}
             >
-              {isLoggingIn ? 'Authenticating...' : 'Unlock Admin Portal'}
+              {isLoggingIn ? 'Verifying...' : 'Unlock Admin Portal'}
             </button>
           </form>
 
@@ -237,7 +188,7 @@ export default function AdminPage() {
           <span className="sectionEyebrow">ADMINISTRATION &amp; ACCOUNTS</span>
           <h1>Donations &amp; Receipts Register</h1>
           <p className="muted">
-            Live database of all donor receipts. Download full Excel spreadsheets and reconcile with bank accounts.
+            Live database of all donor receipts. Download full Excel spreadsheets of all records.
           </p>
         </div>
 
@@ -263,7 +214,7 @@ export default function AdminPage() {
       </div>
 
       {/* Metrics Cards */}
-      <div className="statsGrid">
+      <div className="statsGrid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
         <div className="statCard">
           <span className="statLabel">Total Donations (₹)</span>
           <strong className="statValue">
@@ -277,26 +228,7 @@ export default function AdminPage() {
           <strong className="statValue">{receipts.length}</strong>
           <span className="statSub">Sequential Unique IDs</span>
         </div>
-
-        <div className="statCard borderVerified">
-          <span className="statLabel">Bank Verified</span>
-          <strong className="statValue textVerified">{totalVerifiedCount}</strong>
-          <span className="statSub">Settled &amp; matched with bank ledger</span>
-        </div>
-
-        <div className="statCard borderPending">
-          <span className="statLabel">Pending Bank Settlement</span>
-          <strong className="statValue textPending">{totalPendingCount}</strong>
-          <span className="statSub">Awaiting UTR reconciliation</span>
-        </div>
       </div>
-
-      {reconcileNotice && (
-        <div className="bankNoticeBanner">
-          <ShieldCheck size={18} />
-          <span>{reconcileNotice}</span>
-        </div>
-      )}
 
       {/* Filter and Search Bar */}
       <div className="adminFilterBar">
@@ -314,24 +246,6 @@ export default function AdminPage() {
         </form>
 
         <div className="filterControls">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="statusSelect"
-          >
-            <option value="">All Statuses</option>
-            <option value="VERIFIED">Verified Only</option>
-            <option value="PENDING">Pending Only</option>
-          </select>
-
-          <button
-            onClick={handleBulkReconcileAll}
-            className="btn gold"
-            title="Auto-match all pending UTRs against bank statements"
-          >
-            <ShieldCheck size={16} /> Bulk Verify with Bank
-          </button>
-
           <button
             onClick={fetchReceipts}
             className="btn secondary refreshBtn"
@@ -360,14 +274,11 @@ export default function AdminPage() {
                   <th>District</th>
                   <th>Amount (₹)</th>
                   <th>Mode / UTR</th>
-                  <th>Bank Status</th>
-                  <th>Bank Ref / Date</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {receipts.map((r) => {
-                  const isVer = r.verification_status === 'VERIFIED';
                   return (
                     <tr key={r.receipt_no}>
                       <td>
@@ -393,23 +304,7 @@ export default function AdminPage() {
                         {r.transaction_id ? (
                           <div className="cellUtr" title="UTR">{r.transaction_id}</div>
                         ) : (
-                          <div className="cellSub">No UTR</div>
-                        )}
-                      </td>
-                      <td>
-                        <span className={`statusPill ${isVer ? 'pillVerified' : 'pillPending'}`}>
-                          {isVer ? <CheckCircle2 size={13} /> : <Clock size={13} />}
-                          {r.verification_status}
-                        </span>
-                      </td>
-                      <td>
-                        {r.verification_reference && r.verification_reference !== '-' ? (
-                          <div className="bankMeta">
-                            <strong className="bankRefText">{r.verification_reference}</strong>
-                            <div className="bankDateText">{r.bank_transaction_date}</div>
-                          </div>
-                        ) : (
-                          <span className="cellSub">-</span>
+                          <div className="cellSub">-</div>
                         )}
                       </td>
                       <td>
@@ -422,16 +317,6 @@ export default function AdminPage() {
                           >
                             <ExternalLink size={14} /> Receipt
                           </Link>
-                          {!isVer && r.transaction_id && (
-                            <button
-                              onClick={() => handleVerifyBankItem(r.receipt_no)}
-                              disabled={verifyingId === r.receipt_no}
-                              className="tableVerifyBtn"
-                              title="Cross-check amount with bank"
-                            >
-                              {verifyingId === r.receipt_no ? 'Checking...' : 'Verify Bank'}
-                            </button>
-                          )}
                         </div>
                       </td>
                     </tr>

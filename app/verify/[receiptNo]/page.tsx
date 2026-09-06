@@ -56,7 +56,7 @@ function VerifyReceiptContent({ receiptNo }: { receiptNo: string }) {
   if (loading) {
     return (
       <div className="container" style={{ textAlign: 'center', padding: '100px 20px' }}>
-        <h2>Verifying Receipt authenticity with Youth Peace Foundation...</h2>
+        <h2>Loading Official Receipt from Youth Peace Foundation...</h2>
       </div>
     );
   }
@@ -66,7 +66,7 @@ function VerifyReceiptContent({ receiptNo }: { receiptNo: string }) {
       <div className="container" style={{ maxWidth: '600px', padding: '80px 20px', textAlign: 'center' }}>
         <div className="card" style={{ border: '1px solid #fca5a5', background: '#fef2f2' }}>
           <AlertCircle size={48} color="#dc2626" style={{ margin: '0 auto 16px' }} />
-          <h2 style={{ color: '#991b1b', margin: '0 0 10px' }}>Receipt Verification Unsuccessful</h2>
+          <h2 style={{ color: '#991b1b', margin: '0 0 10px' }}>Receipt Not Found</h2>
           <p style={{ color: '#7f1d1d' }}>{error}</p>
           <div style={{ marginTop: '20px' }}>
             <Link href="/" className="btn">Back to Home</Link>
@@ -82,8 +82,8 @@ function VerifyReceiptContent({ receiptNo }: { receiptNo: string }) {
         <div className="verBannerLeft">
           <ShieldCheck size={28} className="shieldIcon" />
           <div>
-            <strong>Authentic Youth Peace Foundation Digital Receipt</strong>
-            <p>This receipt was officially recorded in the digital register with Unique Sequence ID #{receipt.contribution_id}.</p>
+            <strong>Official Youth Peace Foundation Digital Receipt</strong>
+            <p>Officially recorded in the register with Unique Sequence ID #{receipt.contribution_id}.</p>
           </div>
         </div>
         <Link href="/" className="btn secondary">

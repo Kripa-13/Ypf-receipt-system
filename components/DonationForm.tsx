@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { amountToIndianWords } from '@/lib/number-to-words';
-import { ShieldCheck, CheckCircle2, AlertCircle, Sparkles, RefreshCw } from 'lucide-react';
+import { AlertCircle, Sparkles } from 'lucide-react';
 import { ReceiptData } from './DigitalReceipt';
 
 interface Props {
@@ -29,15 +29,6 @@ export default function DonationForm({ onSuccess }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Bank verification state
-  const [isVerifyingBank, setIsVerifyingBank] = useState(false);
-  const [bankVerificationResult, setBankVerificationResult] = useState<{
-    status: 'VERIFIED' | 'PENDING' | 'AMOUNT_MISMATCH' | 'NOT_FOUND' | null;
-    message: string | null;
-    bankName?: string;
-    authRef?: string;
-  }>({ status: null, message: null });
-
   // Update amount in words when amount changes
   useEffect(() => {
     const num = parseFloat(formData.amount);
@@ -46,9 +37,7 @@ export default function DonationForm({ onSuccess }: Props) {
     } else {
       setAmountWords('Zero Rupees Only');
     }
-    // Reset bank verify status when amount or UTR changes
-    setBankVerificationResult({ status: null, message: null });
-  }, [formData.amount, formData.transactionId]);
+  }, [formData.amount]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData(prev => ({
@@ -59,52 +48,6 @@ export default function DonationForm({ onSuccess }: Props) {
 
   const handleAmountPreset = (val: string) => {
     setFormData(prev => ({ ...prev, amount: val }));
-  };
-
-  // Instant Bank Verification check
-  const handleVerifyBankLive = async () => {
-    if (!formData.transactionId.trim()) {
-      setBankVerificationResult({
-        status: 'NOT_FOUND',
-        message: 'Please enter a Transaction ID / UTR to verify.'
-      });
-      return;
-    }
-
-    const num = parseFloat(formData.amount);
-    if (isNaN(num) || num <= 0) {
-      setBankVerificationResult({
-        status: 'AMOUNT_MISMATCH',
-        message: 'Please enter a valid amount before bank verification.'
-      });
-      return;
-    }
-
-    setIsVerifyingBank(true);
-    try {
-      const res = await fetch('/api/bank/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          utr: formData.transactionId.trim(),
-          amount: num
-        })
-      });
-      const data = await res.json();
-      setBankVerificationResult({
-        status: data.status,
-        message: data.message,
-        bankName: data.bankName,
-        authRef: data.bankAuthRef
-      });
-    } catch (err: any) {
-      setBankVerificationResult({
-        status: 'NOT_FOUND',
-        message: 'Bank verification network error: ' + err.message
-      });
-    } finally {
-      setIsVerifyingBank(false);
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -133,8 +76,7 @@ export default function DonationForm({ onSuccess }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          amount: parseFloat(formData.amount),
-          autoVerifyBank: true
+          amount: parseFloat(formData.amount)
         })
       });
 
@@ -296,7 +238,7 @@ export default function DonationForm({ onSuccess }: Props) {
                 key={val}
                 type="button"
                 onClick={() => handleAmountPreset(val)}
-                className={`presetBtn ${formData.amount === val ? 'activePreset' : ''}`}
+                className={`presetBtn ${formData.amount === val ? "activePreset" : ""}`}
               >
                 ₹{val}
               </button>
@@ -309,7 +251,7 @@ export default function DonationForm({ onSuccess }: Props) {
           </div>
         </div>
 
-        {/* Row 7: Payment Mode & Transaction ID (Bank Verification Feature) */}
+        {/* Row 7: Payment Mode & Transaction ID */}
         <div className="field">
           <label htmlFor="paymentMode">Payment Mode</label>
           <select
@@ -328,62 +270,20 @@ export default function DonationForm({ onSuccess }: Props) {
 
         <div className="field">
           <label htmlFor="transactionId">
-            Transaction ID / UTR (Bank Verification)
+            Transaction ID / UTR
           </label>
-          <div className="utrInputGroup">
-            <input
-              id="transactionId"
-              name="transactionId"
-              type="text"
-              placeholder="e.g. AXISNP1234567890 or 12-digit UPI RRN"
-              value={formData.transactionId}
-              onChange={handleChange}
-            />
-            <button
-              type="button"
-              onClick={handleVerifyBankLive}
-              disabled={isVerifyingBank || !formData.transactionId}
-              className="bankVerifyButton"
-              title="Verify amount directly with the bank"
-            >
-              {isVerifyingBank ? (
-                <RefreshCw size={14} className="spinIcon" />
-              ) : (
-                <ShieldCheck size={14} />
-              )}
-              {isVerifyingBank ? 'Checking...' : 'Verify Bank'}
-            </button>
-          </div>
+          <input
+            id="transactionId"
+            name="transactionId"
+            type="text"
+            placeholder="e.g. AXISNP1234567890 or 12-digit UPI RRN"
+            value={formData.transactionId}
+            onChange={handleChange}
+          />
           <span className="fieldHint">
-            Directly cross-checks the bank settlement credit for this amount.
+            Optional reference for UPI, Net Banking, or Cheque
           </span>
         </div>
-
-        {/* Live Bank Verification Status Badge */}
-        {bankVerificationResult.status && (
-          <div className={`field full bankResultBanner ${bankVerificationResult.status}`}>
-            {bankVerificationResult.status === 'VERIFIED' ? (
-              <>
-                <CheckCircle2 size={20} className="resultIcon verifiedIcon" />
-                <div>
-                  <strong>Direct Bank Verification: VERIFIED</strong>
-                  <p>{bankVerificationResult.message}</p>
-                  {bankVerificationResult.authRef && (
-                    <small>Bank Auth Ref: {bankVerificationResult.authRef}</small>
-                  )}
-                </div>
-              </>
-            ) : (
-              <>
-                <AlertCircle size={20} className="resultIcon mismatchIcon" />
-                <div>
-                  <strong>Bank Status: {bankVerificationResult.status}</strong>
-                  <p>{bankVerificationResult.message}</p>
-                </div>
-              </>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Submit Action */}
