@@ -2,8 +2,29 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Download, Search, RefreshCw, PlusCircle, Lock, LogOut, Eye, EyeOff, ExternalLink } from 'lucide-react';
+import {
+  Download,
+  Search,
+  RefreshCw,
+  PlusCircle,
+  Lock,
+  LogOut,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  CheckCircle2,
+  FileSpreadsheet,
+  FileJson,
+  Database
+} from 'lucide-react';
 import { ReceiptData } from '@/components/DigitalReceipt';
+import {
+  getLocalReceipts,
+  mergeReceipts,
+  syncReceiptsWithServer,
+  exportReceiptsToExcel,
+  exportReceiptsToJson
+} from '@/lib/local-receipts';
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -15,6 +36,9 @@ export default function AdminPage() {
   const [receipts, setReceipts] = useState<ReceiptData[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [hasCloudDb, setHasCloudDb] = useState<boolean>(false);
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
+  const [showDbGuide, setShowDbGuide] = useState(false);
 
   // Check auth session on mount
   useEffect(() => {
@@ -74,11 +98,42 @@ export default function AdminPage() {
       const params = new URLSearchParams();
       if (search) params.set('search', search);
 
-      const res = await fetch(`/api/receipts?${params.toString()}`);
-      const data = await res.json();
-      if (data.success) {
-        setReceipts(data.receipts);
+      const localList = getLocalReceipts();
+      const filteredLocals = search
+        ? localList.filter(
+            r =>
+              (r.receipt_no && r.receipt_no.toLowerCase().includes(search.toLowerCase())) ||
+              (r.contributor_name && r.contributor_name.toLowerCase().includes(search.toLowerCase())) ||
+              (r.contact_no && r.contact_no.includes(search)) ||
+              (r.district && r.district.toLowerCase().includes(search.toLowerCase())) ||
+              (r.transaction_id && r.transaction_id.toLowerCase().includes(search.toLowerCase()))
+          )
+        : localList;
+
+      let serverList: ReceiptData[] = [];
+      try {
+        const res = await fetch(`/api/receipts?${params.toString()}`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.receipts)) {
+          serverList = data.receipts;
+          if (typeof data.hasCloudDb === 'boolean') {
+            setHasCloudDb(data.hasCloudDb);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch receipts from server, using local records:', err);
       }
+
+      const merged = mergeReceipts(serverList, filteredLocals);
+      setReceipts(merged);
+
+      // Background sync
+      syncReceiptsWithServer().then(({ synced }) => {
+        if (synced > 0) {
+          setSyncStatus(`${synced} local record(s) synced to database`);
+          setTimeout(() => setSyncStatus(null), 4000);
+        }
+      });
     } catch (err) {
       console.error('Error fetching admin receipts:', err);
     } finally {
@@ -98,7 +153,7 @@ export default function AdminPage() {
   };
 
   // Calculations
-  const totalCollected = receipts.reduce((sum, r) => sum + (r.amount || 0), 0);
+  const totalCollected = receipts.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
 
   // 1. Checking auth state
   if (isAuthenticated === null) {
@@ -188,21 +243,69 @@ export default function AdminPage() {
           <span className="sectionEyebrow">ADMINISTRATION &amp; ACCOUNTS</span>
           <h1>Donations &amp; Receipts Register</h1>
           <p className="muted">
-            Live database of all donor receipts. Download full Excel spreadsheets of all records.
+            Live permanent register of all donor receipts. Download full Excel spreadsheets (.xlsx) or JSON backups anytime.
           </p>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px', flexWrap: 'wrap' }}>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '4px 10px',
+              borderRadius: '20px',
+              fontSize: '12px',
+              fontWeight: 500,
+              background: hasCloudDb ? '#ecfdf5' : '#f0fdf4',
+              color: hasCloudDb ? '#065f46' : '#166534',
+              border: '1px solid #bbf7d0'
+            }}>
+              <CheckCircle2 size={14} color="#16a34a" />
+              {hasCloudDb ? 'Cloud Database Active (Turso LibSQL)' : 'Permanent Storage Active (Device + Server)'}
+            </span>
+
+            {!hasCloudDb && (
+              <button
+                onClick={() => setShowDbGuide(!showDbGuide)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#2563eb',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  padding: 0
+                }}
+              >
+                {showDbGuide ? 'Hide Cloud DB Guide' : 'Connect Turso Cloud DB (Free)'}
+              </button>
+            )}
+
+            {syncStatus && (
+              <span style={{ fontSize: '12px', color: '#059669', fontStyle: 'italic' }}>
+                ✓ {syncStatus}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="adminActionButtons">
           <Link href="/" className="btn secondary">
             <PlusCircle size={16} /> New Receipt
           </Link>
-          <a
-            href="/api/export-excel"
-            download
+          <button
+            onClick={() => exportReceiptsToExcel(receipts)}
             className="btn excelDownloadBtn"
+            title="Download Excel (.xlsx) file containing all records"
           >
             <Download size={16} /> Download Excel (.xlsx)
-          </a>
+          </button>
+          <button
+            onClick={() => exportReceiptsToJson(receipts)}
+            className="btn secondary"
+            title="Download JSON backup file of all records"
+          >
+            <FileJson size={16} /> Backup JSON
+          </button>
           <button
             onClick={handleLogout}
             className="btn secondary logoutBtn"
@@ -213,6 +316,39 @@ export default function AdminPage() {
         </div>
       </div>
 
+      {/* Optional Turso Guide Card */}
+      {showDbGuide && (
+        <div style={{
+          background: '#eff6ff',
+          border: '1px solid #bfdbfe',
+          borderRadius: '10px',
+          padding: '16px 20px',
+          marginBottom: '20px',
+          fontSize: '13px',
+          color: '#1e3a8a',
+          lineHeight: '1.6'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, fontSize: '14px', marginBottom: '8px' }}>
+            <Database size={16} color="#2563eb" />
+            Connect Free Turso Cloud Database (For multi-device sync across all volunteers)
+          </div>
+          <ol style={{ paddingLeft: '20px', margin: '0 0 10px 0' }}>
+            <li>Go to <a href="https://turso.tech" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', fontWeight: 600 }}>turso.tech</a> and create a free account (100% free, 9GB storage).</li>
+            <li>Create a new database named <strong>ypf-receipts</strong>.</li>
+            <li>In Vercel &rarr; Project Settings &rarr; Environment Variables, add:
+              <ul style={{ marginTop: '4px' }}>
+                <li><code>TURSO_DATABASE_URL</code> = <code>libsql://ypf-receipts-[org].turso.io</code></li>
+                <li><code>TURSO_AUTH_TOKEN</code> = <code>[your_auth_token]</code></li>
+              </ul>
+            </li>
+            <li>Click Redeploy in Vercel. All records from all devices and volunteers will instantly save to one central permanent cloud database!</li>
+          </ol>
+          <p style={{ margin: 0, color: '#3b82f6', fontSize: '12px' }}>
+            <em>Note: Records created in your current browser are already permanently preserved in local device storage and included in all Excel downloads.</em>
+          </p>
+        </div>
+      )}
+
       {/* Metrics Cards */}
       <div className="statsGrid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
         <div className="statCard">
@@ -220,13 +356,13 @@ export default function AdminPage() {
           <strong className="statValue">
             ₹{totalCollected.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
           </strong>
-          <span className="statSub">Across all issued receipts</span>
+          <span className="statSub">Across all saved records</span>
         </div>
 
         <div className="statCard">
           <span className="statLabel">Total Receipts</span>
           <strong className="statValue">{receipts.length}</strong>
-          <span className="statSub">Sequential Unique IDs</span>
+          <span className="statSub">Saved in Register</span>
         </div>
       </div>
 
@@ -296,7 +432,7 @@ export default function AdminPage() {
                       </td>
                       <td>
                         <strong className="cellAmount">
-                          ₹{r.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          ₹{Number(r.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </strong>
                       </td>
                       <td>

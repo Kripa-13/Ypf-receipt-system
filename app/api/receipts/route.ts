@@ -48,7 +48,8 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       count: res.rows.length,
-      receipts: res.rows as unknown as ReceiptRecord[]
+      receipts: res.rows as unknown as ReceiptRecord[],
+      hasCloudDb: Boolean(process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL)
     });
   } catch (err: any) {
     console.error('Error fetching receipts:', err);

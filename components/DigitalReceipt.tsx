@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { Download, Printer, ArrowLeft, FileText } from 'lucide-react';
+import { Download, Printer, ArrowLeft, FileText, CheckCircle2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { saveReceiptLocally } from '@/lib/local-receipts';
 
 export interface ReceiptData {
   id?: number;
@@ -39,6 +40,9 @@ export default function DigitalReceipt({ receipt, onBack }: Props) {
   const receiptRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (receipt) {
+      saveReceiptLocally(receipt);
+    }
     confetti({
       particleCount: 50,
       spread: 60,
@@ -152,6 +156,26 @@ export default function DigitalReceipt({ receipt, onBack }: Props) {
         <button onClick={handleDownloadImage} className="btn gold">
           <Download size={16} /> Download Image (PNG)
         </button>
+      </div>
+
+      {/* Record Saved Confirmation Banner */}
+      <div className="receiptSaveStatusBanner no-print" style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        padding: '10px 16px',
+        background: '#ecfdf5',
+        border: '1px solid #a7f3d0',
+        borderRadius: '8px',
+        color: '#065f46',
+        fontSize: '13px',
+        marginBottom: '16px',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+      }}>
+        <CheckCircle2 size={18} color="#059669" />
+        <span>
+          <strong>Record Saved Permanently:</strong> Stored in official register under receipt <strong>{receipt.receipt_no}</strong> (ID #{receipt.contribution_id}). Access anytime from Admin portal.
+        </span>
       </div>
 
       {/* The Printable / Downloadable Digital Receipt */}

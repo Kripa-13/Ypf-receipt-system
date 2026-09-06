@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { amountToIndianWords } from '@/lib/number-to-words';
 import { AlertCircle, Sparkles } from 'lucide-react';
 import { ReceiptData } from './DigitalReceipt';
+import { saveReceiptLocally } from '@/lib/local-receipts';
 
 interface Props {
   onSuccess: (receipt: ReceiptData) => void;
@@ -84,6 +85,9 @@ export default function DonationForm({ onSuccess }: Props) {
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Failed to create receipt');
       }
+
+      // Immediately save to device permanent localStorage
+      saveReceiptLocally(data.receipt);
 
       // Success: pass to parent to render digital receipt
       onSuccess(data.receipt);
