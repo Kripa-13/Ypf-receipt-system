@@ -317,7 +317,7 @@ export default function DigitalReceipt({ receipt, onBack }: Props) {
           <div className="footerOrgName">YOUTH PEACE FOUNDATION</div>
           <div className="footerTagline">Working for Peace, Harmony &amp; Sustainable Development</div>
           <div className="footerContact">
-            www.ypf.org.in &nbsp;|&nbsp; contact@ypf.org.in &nbsp;|&nbsp; +91 96259 24197
+            www.ypf.org.in &nbsp;|&nbsp; contact@ypf.org.in
           </div>
           <div className="footerTaxExempt">
             <strong>YOUTH PEACE FOUNDATION</strong><br />
