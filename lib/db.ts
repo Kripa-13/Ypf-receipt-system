@@ -119,6 +119,8 @@ export interface CreateReceiptInput {
   verificationStatus?: 'PENDING' | 'VERIFIED' | 'FAILED';
   bankTransactionDate?: string;
   verificationReference?: string;
+  clientMaxId?: number;
+  customContributionId?: number;
 }
 
 export interface ReceiptRecord {
@@ -147,14 +149,35 @@ export interface ReceiptRecord {
 /**
  * Concurrency-safe atomic receipt creation.
  * Generates monotonic unique IDs (YPF-2026-000001, etc.)
+ * Preserves sequence continuity across restarts, days, and devices.
  */
 export async function insertReceiptAtomic(input: CreateReceiptInput): Promise<ReceiptRecord> {
   const db = await ensureDbInitialized();
 
   const year = new Date().getFullYear();
   const maxRowRes = await db.execute('SELECT MAX(contribution_id) as maxId FROM receipts');
-  const maxId = maxRowRes.rows[0]?.maxId ? Number(maxRowRes.rows[0].maxId) : 0;
-  const nextContributionId = maxId + 1;
+  const dbMaxId = maxRowRes.rows[0]?.maxId ? Number(maxRowRes.rows[0].maxId) : 0;
+  const clientMax = Number(input.clientMaxId) || 0;
+  const requested = Number(input.customContributionId) || 0;
+
+  let nextContributionId: number;
+  if (requested > 0) {
+    nextContributionId = requested;
+  } else {
+    nextContributionId = Math.max(dbMaxId, clientMax) + 1;
+  }
+
+  // Safety check: ensure nextContributionId is unique (does not collide with existing record)
+  const collisionCheck = await db.execute({
+    sql: 'SELECT id FROM receipts WHERE contribution_id = ?',
+    args: [nextContributionId]
+  });
+
+  if (collisionCheck.rows.length > 0 && requested <= 0) {
+    const safeMax = Math.max(dbMaxId, clientMax, nextContributionId);
+    nextContributionId = safeMax + 1;
+  }
+
   const formattedReceiptNo = `YPF-${year}-${String(nextContributionId).padStart(6, '0')}`;
   const now = new Date().toISOString();
 

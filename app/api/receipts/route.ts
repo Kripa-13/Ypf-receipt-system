@@ -45,9 +45,13 @@ export async function GET(request: Request) {
       args: params
     });
 
+    const maxRowRes = await db.execute('SELECT MAX(contribution_id) as maxId FROM receipts');
+    const maxContributionId = maxRowRes.rows[0]?.maxId ? Number(maxRowRes.rows[0].maxId) : 0;
+
     return NextResponse.json({
       success: true,
       count: res.rows.length,
+      maxContributionId,
       receipts: res.rows as unknown as ReceiptRecord[],
       hasCloudDb: Boolean(process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL)
     });
@@ -74,7 +78,9 @@ export async function POST(request: Request) {
       amount,
       paymentMode,
       transactionId,
-      autoVerifyBank
+      autoVerifyBank,
+      clientMaxId,
+      customContributionId
     } = body;
 
     // Basic validation
@@ -125,7 +131,9 @@ export async function POST(request: Request) {
       transactionId: transactionId || '',
       verificationStatus,
       bankTransactionDate,
-      verificationReference
+      verificationReference,
+      clientMaxId: clientMaxId ? Number(clientMaxId) : undefined,
+      customContributionId: customContributionId ? Number(customContributionId) : undefined
     };
 
     const receipt = await insertReceiptAtomic(receiptInput);

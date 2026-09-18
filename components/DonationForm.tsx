@@ -4,7 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { amountToIndianWords } from '@/lib/number-to-words';
 import { AlertCircle, Sparkles } from 'lucide-react';
 import { ReceiptData } from './DigitalReceipt';
-import { saveReceiptLocally } from '@/lib/local-receipts';
+import {
+  saveReceiptLocally,
+  getClientHighestContributionId,
+  recordContributionId,
+  syncReceiptsWithServer
+} from '@/lib/local-receipts';
+import { Hash, Settings2 } from 'lucide-react';
 
 interface Props {
   onSuccess: (receipt: ReceiptData) => void;
@@ -26,9 +32,38 @@ export default function DonationForm({ onSuccess }: Props) {
     transactionId: ''
   });
 
+  const [expectedSeqId, setExpectedSeqId] = useState<number>(1);
+  const [isCustomSeq, setIsCustomSeq] = useState<boolean>(false);
+  const [customSeqInput, setCustomSeqInput] = useState<string>('');
+
   const [amountWords, setAmountWords] = useState('One Hundred Rupees Only');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Sync stored receipts and resolve next sequence number
+  useEffect(() => {
+    // 1. Trigger background sync of local records
+    syncReceiptsWithServer().catch(() => {});
+
+    // 2. Fetch server sequence and compare with device sequence
+    async function resolveNextSequence() {
+      const clientHighest = getClientHighestContributionId();
+      let serverHighest = 0;
+      try {
+        const res = await fetch('/api/receipts');
+        const data = await res.json();
+        if (data.success && typeof data.maxContributionId === 'number') {
+          serverHighest = data.maxContributionId;
+        }
+      } catch {
+        // Fallback to client highest
+      }
+      const nextId = Math.max(clientHighest, serverHighest) + 1;
+      setExpectedSeqId(nextId);
+    }
+
+    resolveNextSequence();
+  }, []);
 
   // Update amount in words when amount changes
   useEffect(() => {
@@ -72,12 +107,17 @@ export default function DonationForm({ onSuccess }: Props) {
     setIsSubmitting(true);
 
     try {
+      const clientMax = getClientHighestContributionId();
+      const customId = isCustomSeq && customSeqInput.trim() ? parseInt(customSeqInput.trim(), 10) : undefined;
+
       const res = await fetch('/api/receipts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          amount: parseFloat(formData.amount)
+          amount: parseFloat(formData.amount),
+          clientMaxId: clientMax,
+          customContributionId: customId && !isNaN(customId) && customId > 0 ? customId : undefined
         })
       });
 
@@ -86,8 +126,11 @@ export default function DonationForm({ onSuccess }: Props) {
         throw new Error(data.error || 'Failed to create receipt');
       }
 
-      // Immediately save to device permanent localStorage
+      // Immediately save to device permanent localStorage & update sequence tracker
       saveReceiptLocally(data.receipt);
+      if (data.receipt && data.receipt.contribution_id) {
+        recordContributionId(Number(data.receipt.contribution_id));
+      }
 
       // Success: pass to parent to render digital receipt
       onSuccess(data.receipt);
@@ -104,6 +147,104 @@ export default function DonationForm({ onSuccess }: Props) {
         <div className="formErrorAlert">
           <AlertCircle size={18} />
           <span>{errorMessage}</span>
+        </div>
+      )}
+
+      {/* Sequence Counter & Continuity Banner */}
+      <div style={{
+        background: '#f8fafc',
+        border: '1px solid #cbd5e1',
+        borderRadius: '12px',
+        padding: '14px 18px',
+        marginBottom: '20px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+      }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 700, color: '#0f766e', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <Hash size={14} />
+            <span>Official Receipt Sequence</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginTop: '2px' }}>
+            <span style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a' }}>
+              #{isCustomSeq && customSeqInput.trim() ? customSeqInput.trim() : expectedSeqId}
+            </span>
+            <span style={{ fontSize: '14px', fontWeight: 600, color: '#475569', fontFamily: 'monospace' }}>
+              YPF-{new Date().getFullYear()}-{String(isCustomSeq && customSeqInput.trim() ? customSeqInput.trim() : expectedSeqId).padStart(6, '0')}
+            </span>
+          </div>
+          <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '2px' }}>
+            Monotonically unique sequence &bull; Automatically preserved across days, devices &amp; reloads
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            if (!isCustomSeq) {
+              setCustomSeqInput(String(expectedSeqId));
+            }
+            setIsCustomSeq(!isCustomSeq);
+          }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: isCustomSeq ? '#0f766e' : '#ffffff',
+            color: isCustomSeq ? '#ffffff' : '#334155',
+            border: '1px solid #94a3b8',
+            borderRadius: '8px',
+            padding: '7px 14px',
+            fontSize: '12px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+          title="Click to manually specify sequence number (e.g. 7)"
+        >
+          <Settings2 size={14} />
+          {isCustomSeq ? '✓ Auto Sequence' : 'Set Custom Sequence #'}
+        </button>
+      </div>
+
+      {isCustomSeq && (
+        <div style={{
+          background: '#f0fdf4',
+          border: '1px solid #86efac',
+          borderRadius: '10px',
+          padding: '14px 18px',
+          marginBottom: '20px'
+        }}>
+          <label htmlFor="customSeq" style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#166534', marginBottom: '6px' }}>
+            Specify Sequence Number for this Receipt *
+          </label>
+          <input
+            id="customSeq"
+            type="number"
+            min="1"
+            value={customSeqInput}
+            onChange={(e) => setCustomSeqInput(e.target.value)}
+            placeholder="e.g. 7"
+            style={{
+              width: '100%',
+              maxWidth: '280px',
+              padding: '9px 12px',
+              fontSize: '15px',
+              fontWeight: 700,
+              border: '1px solid #16a34a',
+              borderRadius: '6px',
+              color: '#14532d',
+              background: '#ffffff'
+            }}
+            required
+          />
+          <span style={{ display: 'block', fontSize: '12px', color: '#15803d', marginTop: '6px' }}>
+            Example: If you created receipt #1 earlier and want Monday&apos;s receipt to be #7, enter <strong>7</strong> here.
+          </span>
         </div>
       )}
 

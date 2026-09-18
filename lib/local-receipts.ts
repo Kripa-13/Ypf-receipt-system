@@ -38,8 +38,50 @@ export function saveReceiptLocally(receipt: ReceiptData): void {
     }
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+
+    if (receipt.contribution_id) {
+      recordContributionId(Number(receipt.contribution_id));
+    }
   } catch (err) {
     console.error('Failed to save receipt locally:', err);
+  }
+}
+
+/**
+ * Retrieve the highest sequence / contribution ID recorded on this device.
+ */
+export function getClientHighestContributionId(): number {
+  const receipts = getLocalReceipts();
+  let max = 0;
+  for (const r of receipts) {
+    const id = Number(r.contribution_id) || 0;
+    if (id > max) max = id;
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      const explicit = Number(localStorage.getItem('ypf_highest_contribution_id'));
+      if (!isNaN(explicit) && explicit > max) {
+        max = explicit;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return max;
+}
+
+/**
+ * Record a contribution sequence number to guarantee monotonic continuity across days and restarts.
+ */
+export function recordContributionId(id: number): void {
+  if (typeof window === 'undefined' || !id || isNaN(id)) return;
+  try {
+    const current = getClientHighestContributionId();
+    if (id > current) {
+      localStorage.setItem('ypf_highest_contribution_id', String(id));
+    }
+  } catch {
+    // ignore
   }
 }
 
