@@ -67,6 +67,7 @@ export async function GET(request: Request) {
         urlPreview: rawUrl ? (rawUrl.length > 25 ? `${rawUrl.slice(0, 15)}...${rawUrl.slice(-10)}` : rawUrl) : 'NOT_SET',
         tokenConfigured: Boolean(rawToken),
         tokenLength: rawToken.length,
+        tokenStart: rawToken.slice(0, 8),
         hasQuotes: rawUrl.startsWith('"') || rawUrl.startsWith("'") || rawToken.startsWith('"') || rawToken.startsWith("'")
       }
     }, { status: 500 });
