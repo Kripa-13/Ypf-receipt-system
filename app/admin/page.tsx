@@ -15,7 +15,9 @@ import {
   CheckCircle2,
   FileSpreadsheet,
   FileJson,
-  Database
+  Database,
+  Upload,
+  AlertTriangle
 } from 'lucide-react';
 import { ReceiptData } from '@/components/DigitalReceipt';
 import {
@@ -23,7 +25,9 @@ import {
   mergeReceipts,
   syncReceiptsWithServer,
   exportReceiptsToExcel,
-  exportReceiptsToJson
+  exportReceiptsToJson,
+  saveReceiptLocally,
+  recordContributionId
 } from '@/lib/local-receipts';
 
 export default function AdminPage() {
@@ -152,6 +156,46 @@ export default function AdminPage() {
     fetchReceipts();
   };
 
+  const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const content = event.target?.result as string;
+        const parsed = JSON.parse(content);
+        const items: ReceiptData[] = Array.isArray(parsed) ? parsed : [parsed];
+        if (items.length === 0) {
+          alert('No valid receipt data found in JSON file.');
+          return;
+        }
+
+        // Save each locally and record sequence ID
+        for (const item of items) {
+          if (item && item.receipt_no) {
+            saveReceiptLocally(item);
+            if (item.contribution_id) {
+              recordContributionId(Number(item.contribution_id));
+            }
+          }
+        }
+
+        // Sync to server API
+        await syncReceiptsWithServer();
+
+        // Refresh admin table
+        await fetchReceipts();
+        setSyncStatus(`Successfully imported ${items.length} records!`);
+        setTimeout(() => setSyncStatus(null), 5000);
+      } catch (err: any) {
+        alert('Failed to import JSON file: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   // Calculations
   const totalCollected = receipts.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
 
@@ -251,32 +295,42 @@ export default function AdminPage() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '4px 10px',
+              padding: '5px 12px',
               borderRadius: '20px',
               fontSize: '12px',
-              fontWeight: 500,
-              background: hasCloudDb ? '#ecfdf5' : '#f0fdf4',
-              color: hasCloudDb ? '#065f46' : '#166534',
-              border: '1px solid #bbf7d0'
+              fontWeight: 600,
+              background: hasCloudDb ? '#ecfdf5' : '#fffbeb',
+              color: hasCloudDb ? '#065f46' : '#b45309',
+              border: hasCloudDb ? '1px solid #bbf7d0' : '1px solid #fde68a'
             }}>
-              <CheckCircle2 size={14} color="#16a34a" />
-              {hasCloudDb ? 'Cloud Database Active (Turso LibSQL)' : 'Permanent Storage Active (Device + Server)'}
+              {hasCloudDb ? (
+                <>
+                  <CheckCircle2 size={14} color="#16a34a" />
+                  Cloud Database Active (Multi-Device Sync Online)
+                </>
+              ) : (
+                <>
+                  <AlertTriangle size={14} color="#d97706" />
+                  Local Device Mode Only (No Cloud DB Connected)
+                </>
+              )}
             </span>
 
             {!hasCloudDb && (
               <button
                 onClick={() => setShowDbGuide(!showDbGuide)}
                 style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#2563eb',
+                  background: '#fef3c7',
+                  border: '1px solid #f59e0b',
+                  color: '#92400e',
+                  borderRadius: '6px',
+                  padding: '4px 10px',
                   fontSize: '12px',
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
-                  padding: 0
+                  fontWeight: 600,
+                  cursor: 'pointer'
                 }}
               >
-                {showDbGuide ? 'Hide Cloud DB Guide' : 'Connect Turso Cloud DB (Free)'}
+                {showDbGuide ? 'Hide Setup Guide' : '⚠️ Connect Free Cloud DB to See All Users’ Receipts'}
               </button>
             )}
 
@@ -306,6 +360,19 @@ export default function AdminPage() {
           >
             <FileJson size={16} /> Backup JSON
           </button>
+          <label
+            className="btn secondary"
+            style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', margin: 0 }}
+            title="Import a JSON backup from another volunteer's device"
+          >
+            <Upload size={16} /> Import JSON
+            <input
+              type="file"
+              accept=".json"
+              style={{ display: 'none' }}
+              onChange={handleImportJson}
+            />
+          </label>
           <button
             onClick={handleLogout}
             className="btn secondary logoutBtn"
@@ -316,36 +383,43 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Optional Turso Guide Card */}
-      {showDbGuide && (
+      {/* Cloud DB Alert & Guide */}
+      {!hasCloudDb && (
         <div style={{
-          background: '#eff6ff',
-          border: '1px solid #bfdbfe',
+          background: '#fffbeb',
+          border: '1.5px solid #f59e0b',
           borderRadius: '10px',
           padding: '16px 20px',
           marginBottom: '20px',
           fontSize: '13px',
-          color: '#1e3a8a',
+          color: '#78350f',
           lineHeight: '1.6'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, fontSize: '14px', marginBottom: '8px' }}>
-            <Database size={16} color="#2563eb" />
-            Connect Free Turso Cloud Database (For multi-device sync across all volunteers)
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '15px', color: '#92400e', marginBottom: '8px' }}>
+            <AlertTriangle size={18} color="#d97706" />
+            Why are receipts generated by other people not appearing here?
           </div>
-          <ol style={{ paddingLeft: '20px', margin: '0 0 10px 0' }}>
-            <li>Go to <a href="https://turso.tech" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', fontWeight: 600 }}>turso.tech</a> and create a free account (100% free, 9GB storage).</li>
-            <li>Create a new database named <strong>ypf-receipts</strong>.</li>
-            <li>In Vercel &rarr; Project Settings &rarr; Environment Variables, add:
-              <ul style={{ marginTop: '4px' }}>
-                <li><code>TURSO_DATABASE_URL</code> = <code>libsql://ypf-receipts-[org].turso.io</code></li>
-                <li><code>TURSO_AUTH_TOKEN</code> = <code>[your_auth_token]</code></li>
+          <p style={{ margin: '0 0 10px 0' }}>
+            Your application is currently running in <strong>Local Device Mode</strong>. Because Vercel operates on isolated serverless containers, receipts created by volunteers on their own phones or computers are stored <strong>only on their devices</strong> and cannot automatically reach this Admin portal until a shared cloud database is connected.
+          </p>
+          <div style={{ fontWeight: 700, marginBottom: '6px', color: '#92400e' }}>
+            Permanent Solution: Connect Free Turso Cloud Database (3 Minutes, 100% Free Forever, No Credit Card):
+          </div>
+          <ol style={{ paddingLeft: '20px', margin: '0 0 12px 0' }}>
+            <li>Open <a href="https://turso.tech" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', fontWeight: 700, textDecoration: 'underline' }}>turso.tech</a> and create a free account (Sign in with GitHub or email).</li>
+            <li>Click <strong>Create database</strong> &rarr; name it <code>ypf-receipts</code>.</li>
+            <li>From your database dashboard, copy the <strong>Database URL</strong> and generate an <strong>Auth Token</strong>.</li>
+            <li>Go to your project on <a href="https://vercel.com" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', fontWeight: 700, textDecoration: 'underline' }}>vercel.com</a> &rarr; <strong>Settings</strong> &rarr; <strong>Environment Variables</strong> and add:
+              <ul style={{ marginTop: '4px', fontFamily: 'monospace', fontSize: '12px' }}>
+                <li><code>TURSO_DATABASE_URL</code> = <code>libsql://ypf-receipts-your-org.turso.io</code></li>
+                <li><code>TURSO_AUTH_TOKEN</code> = <code>eyJ...your_token</code></li>
               </ul>
             </li>
-            <li>Click Redeploy in Vercel. All records from all devices and volunteers will instantly save to one central permanent cloud database!</li>
+            <li>Click <strong>Redeploy</strong> in Vercel. Done! All receipts generated from any phone or computer anywhere will immediately sync and appear right here.</li>
           </ol>
-          <p style={{ margin: 0, color: '#3b82f6', fontSize: '12px' }}>
-            <em>Note: Records created in your current browser are already permanently preserved in local device storage and included in all Excel downloads.</em>
-          </p>
+          <div style={{ background: '#fef3c7', border: '1px solid #fde68a', padding: '10px 14px', borderRadius: '6px', fontSize: '12px', color: '#92400e' }}>
+            💡 <strong>Quick Fix for Already-Generated Receipts:</strong> Any volunteer who already created receipts on their phone can open <code>/admin</code> on that phone (password: <code>Premrawat_100</code>), click <strong>Backup JSON</strong>, and send you the file. You can then click the <strong>Import JSON</strong> button above to immediately import all their receipts into this dashboard!
+          </div>
         </div>
       )}
 
