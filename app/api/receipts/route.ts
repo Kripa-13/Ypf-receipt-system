@@ -57,7 +57,19 @@ export async function GET(request: Request) {
     });
   } catch (err: any) {
     console.error('Error fetching receipts:', err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    const rawUrl = (process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL || '').trim();
+    const rawToken = (process.env.TURSO_AUTH_TOKEN || '').trim();
+    return NextResponse.json({
+      success: false,
+      error: err.message,
+      diagnostics: {
+        urlConfigured: Boolean(rawUrl),
+        urlPreview: rawUrl ? (rawUrl.length > 25 ? `${rawUrl.slice(0, 15)}...${rawUrl.slice(-10)}` : rawUrl) : 'NOT_SET',
+        tokenConfigured: Boolean(rawToken),
+        tokenLength: rawToken.length,
+        hasQuotes: rawUrl.startsWith('"') || rawUrl.startsWith("'") || rawToken.startsWith('"') || rawToken.startsWith("'")
+      }
+    }, { status: 500 });
   }
 }
 

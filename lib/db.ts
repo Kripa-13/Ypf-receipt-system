@@ -8,9 +8,25 @@ let isInitialized = false;
 export function getDb(): Client {
   if (!client) {
     const isVercel = Boolean(process.env.VERCEL);
-    const rawTursoUrl = process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL;
-    const tursoUrl = rawTursoUrl ? rawTursoUrl.trim() : undefined;
-    const tursoToken = process.env.TURSO_AUTH_TOKEN ? process.env.TURSO_AUTH_TOKEN.trim() : undefined;
+    let tursoUrl = process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL;
+    let tursoToken = process.env.TURSO_AUTH_TOKEN;
+
+    if (tursoUrl) {
+      tursoUrl = tursoUrl.trim();
+      if ((tursoUrl.startsWith('"') && tursoUrl.endsWith('"')) || (tursoUrl.startsWith("'") && tursoUrl.endsWith("'"))) {
+        tursoUrl = tursoUrl.slice(1, -1).trim();
+      }
+    }
+
+    if (tursoToken) {
+      tursoToken = tursoToken.trim();
+      if ((tursoToken.startsWith('"') && tursoToken.endsWith('"')) || (tursoToken.startsWith("'") && tursoToken.endsWith("'"))) {
+        tursoToken = tursoToken.slice(1, -1).trim();
+      }
+      if (tursoToken.startsWith('Bearer ')) {
+        tursoToken = tursoToken.replace(/^Bearer\s+/i, '').trim();
+      }
+    }
 
     if (tursoUrl) {
       client = createClient({
