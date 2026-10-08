@@ -76,10 +76,24 @@ export function getClientHighestContributionId(): number {
 export function recordContributionId(id: number): void {
   if (typeof window === 'undefined' || !id || isNaN(id)) return;
   try {
-    const current = getClientHighestContributionId();
-    if (id > current) {
-      localStorage.setItem('ypf_highest_contribution_id', String(id));
+    const num = Number(id);
+    const explicit = Number(localStorage.getItem('ypf_highest_contribution_id')) || 0;
+    if (num > explicit) {
+      localStorage.setItem('ypf_highest_contribution_id', String(num));
     }
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Explicitly set the next expected sequence number across the device.
+ */
+export function setExplicitNextSequence(nextId: number): void {
+  if (typeof window === 'undefined' || !nextId || isNaN(nextId)) return;
+  try {
+    const prev = Math.max(0, Number(nextId) - 1);
+    localStorage.setItem('ypf_highest_contribution_id', String(prev));
   } catch {
     // ignore
   }

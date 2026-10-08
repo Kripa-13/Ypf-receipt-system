@@ -80,7 +80,8 @@ export async function POST(request: Request) {
       transactionId,
       autoVerifyBank,
       clientMaxId,
-      customContributionId
+      customContributionId,
+      contributionId
     } = body;
 
     // Basic validation
@@ -133,7 +134,8 @@ export async function POST(request: Request) {
       bankTransactionDate,
       verificationReference,
       clientMaxId: clientMaxId ? Number(clientMaxId) : undefined,
-      customContributionId: customContributionId ? Number(customContributionId) : undefined
+      customContributionId: customContributionId ? Number(customContributionId) : undefined,
+      contributionId: contributionId ? Number(contributionId) : undefined
     };
 
     const receipt = await insertReceiptAtomic(receiptInput);

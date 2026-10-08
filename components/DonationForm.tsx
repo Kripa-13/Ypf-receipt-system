@@ -8,9 +8,10 @@ import {
   saveReceiptLocally,
   getClientHighestContributionId,
   recordContributionId,
+  setExplicitNextSequence,
   syncReceiptsWithServer
 } from '@/lib/local-receipts';
-import { Hash, Settings2 } from 'lucide-react';
+import { Hash } from 'lucide-react';
 
 interface Props {
   onSuccess: (receipt: ReceiptData) => void;
@@ -32,10 +33,7 @@ export default function DonationForm({ onSuccess }: Props) {
     transactionId: ''
   });
 
-  const [expectedSeqId, setExpectedSeqId] = useState<number>(1);
-  const [isCustomSeq, setIsCustomSeq] = useState<boolean>(false);
-  const [customSeqInput, setCustomSeqInput] = useState<string>('');
-
+  const [sequenceNo, setSequenceNo] = useState<string>('1');
   const [amountWords, setAmountWords] = useState('One Hundred Rupees Only');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -59,7 +57,7 @@ export default function DonationForm({ onSuccess }: Props) {
         // Fallback to client highest
       }
       const nextId = Math.max(clientHighest, serverHighest) + 1;
-      setExpectedSeqId(nextId);
+      setSequenceNo(String(nextId));
     }
 
     resolveNextSequence();
@@ -107,8 +105,8 @@ export default function DonationForm({ onSuccess }: Props) {
     setIsSubmitting(true);
 
     try {
+      const seqVal = parseInt(sequenceNo, 10) || 1;
       const clientMax = getClientHighestContributionId();
-      const customId = isCustomSeq && customSeqInput.trim() ? parseInt(customSeqInput.trim(), 10) : undefined;
 
       const res = await fetch('/api/receipts', {
         method: 'POST',
@@ -117,7 +115,8 @@ export default function DonationForm({ onSuccess }: Props) {
           ...formData,
           amount: parseFloat(formData.amount),
           clientMaxId: clientMax,
-          customContributionId: customId && !isNaN(customId) && customId > 0 ? customId : undefined
+          contributionId: seqVal,
+          customContributionId: seqVal
         })
       });
 
@@ -129,7 +128,10 @@ export default function DonationForm({ onSuccess }: Props) {
       // Immediately save to device permanent localStorage & update sequence tracker
       saveReceiptLocally(data.receipt);
       if (data.receipt && data.receipt.contribution_id) {
-        recordContributionId(Number(data.receipt.contribution_id));
+        const issuedSeq = Number(data.receipt.contribution_id);
+        recordContributionId(issuedSeq);
+        setExplicitNextSequence(issuedSeq + 1);
+        setSequenceNo(String(issuedSeq + 1));
       }
 
       // Success: pass to parent to render digital receipt
@@ -150,106 +152,70 @@ export default function DonationForm({ onSuccess }: Props) {
         </div>
       )}
 
-      {/* Sequence Counter & Continuity Banner */}
+      {/* Live Sequence Status Card */}
       <div style={{
-        background: '#f8fafc',
-        border: '1px solid #cbd5e1',
+        background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+        border: '1.5px solid #86efac',
         borderRadius: '12px',
-        padding: '14px 18px',
+        padding: '12px 18px',
         marginBottom: '20px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: '12px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+        gap: '12px'
       }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 700, color: '#0f766e', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            <Hash size={14} />
-            <span>Official Receipt Sequence</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            background: '#16a34a',
+            color: 'white',
+            borderRadius: '8px',
+            padding: '6px 14px',
+            fontWeight: 800,
+            fontSize: '18px',
+            boxShadow: '0 2px 4px rgba(22, 163, 74, 0.25)'
+          }}>
+            #{parseInt(sequenceNo || '1', 10) || 1}
           </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginTop: '2px' }}>
-            <span style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a' }}>
-              #{isCustomSeq && customSeqInput.trim() ? customSeqInput.trim() : expectedSeqId}
-            </span>
-            <span style={{ fontSize: '14px', fontWeight: 600, color: '#475569', fontFamily: 'monospace' }}>
-              YPF-{new Date().getFullYear()}-{String(isCustomSeq && customSeqInput.trim() ? customSeqInput.trim() : expectedSeqId).padStart(6, '0')}
-            </span>
-          </div>
-          <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '2px' }}>
-            Monotonically unique sequence &bull; Automatically preserved across days, devices &amp; reloads
+          <div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              OFFICIAL RECEIPT SEQUENCE NUMBER
+            </div>
+            <div style={{ fontSize: '15px', fontWeight: 800, color: '#065f46', fontFamily: 'monospace' }}>
+              YPF-{new Date().getFullYear()}-{String(parseInt(sequenceNo || '1', 10) || 1).padStart(6, '0')}
+            </div>
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={() => {
-            if (!isCustomSeq) {
-              setCustomSeqInput(String(expectedSeqId));
-            }
-            setIsCustomSeq(!isCustomSeq);
-          }}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            background: isCustomSeq ? '#0f766e' : '#ffffff',
-            color: isCustomSeq ? '#ffffff' : '#334155',
-            border: '1px solid #94a3b8',
-            borderRadius: '8px',
-            padding: '7px 14px',
-            fontSize: '12px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            transition: 'all 0.2s ease'
-          }}
-          title="Click to manually specify sequence number (e.g. 7)"
-        >
-          <Settings2 size={14} />
-          {isCustomSeq ? '✓ Auto Sequence' : 'Set Custom Sequence #'}
-        </button>
+        <div style={{ fontSize: '12px', color: '#15803d', fontWeight: 500 }}>
+          Editable in the field below &bull; Auto-increments sequentially
+        </div>
       </div>
 
-      {isCustomSeq && (
-        <div style={{
-          background: '#f0fdf4',
-          border: '1px solid #86efac',
-          borderRadius: '10px',
-          padding: '14px 18px',
-          marginBottom: '20px'
-        }}>
-          <label htmlFor="customSeq" style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#166534', marginBottom: '6px' }}>
-            Specify Sequence Number for this Receipt *
+      <div className="formgrid">
+        {/* Row 1: Receipt Sequence No & Date */}
+        <div className="field">
+          <label htmlFor="sequenceNo">
+            Receipt Sequence No. *
+            <span style={{ fontWeight: 'normal', color: 'var(--muted)', fontSize: '11px', marginLeft: '6px' }}>
+              (Auto-increments)
+            </span>
           </label>
           <input
-            id="customSeq"
+            id="sequenceNo"
+            name="sequenceNo"
             type="number"
             min="1"
-            value={customSeqInput}
-            onChange={(e) => setCustomSeqInput(e.target.value)}
+            value={sequenceNo}
+            onChange={(e) => setSequenceNo(e.target.value)}
             placeholder="e.g. 7"
-            style={{
-              width: '100%',
-              maxWidth: '280px',
-              padding: '9px 12px',
-              fontSize: '15px',
-              fontWeight: 700,
-              border: '1px solid #16a34a',
-              borderRadius: '6px',
-              color: '#14532d',
-              background: '#ffffff'
-            }}
             required
+            style={{ fontWeight: 800, fontSize: '16px', color: '#0f766e', border: '1.5px solid #0d9488' }}
           />
-          <span style={{ display: 'block', fontSize: '12px', color: '#15803d', marginTop: '6px' }}>
-            Example: If you created receipt #1 earlier and want Monday&apos;s receipt to be #7, enter <strong>7</strong> here.
+          <span className="fieldHint">
+            Generates: <strong>YPF-{new Date().getFullYear()}-{String(parseInt(sequenceNo || '1', 10) || 1).padStart(6, '0')}</strong>
           </span>
         </div>
-      )}
 
-      <div className="formgrid">
-        {/* Row 1: Date and Contact */}
         <div className="field">
           <label htmlFor="date">Date *</label>
           <input

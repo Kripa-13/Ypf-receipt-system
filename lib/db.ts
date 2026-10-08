@@ -121,6 +121,7 @@ export interface CreateReceiptInput {
   verificationReference?: string;
   clientMaxId?: number;
   customContributionId?: number;
+  contributionId?: number;
 }
 
 export interface ReceiptRecord {
@@ -158,7 +159,7 @@ export async function insertReceiptAtomic(input: CreateReceiptInput): Promise<Re
   const maxRowRes = await db.execute('SELECT MAX(contribution_id) as maxId FROM receipts');
   const dbMaxId = maxRowRes.rows[0]?.maxId ? Number(maxRowRes.rows[0].maxId) : 0;
   const clientMax = Number(input.clientMaxId) || 0;
-  const requested = Number(input.customContributionId) || 0;
+  const requested = Number(input.contributionId || input.customContributionId) || 0;
 
   let nextContributionId: number;
   if (requested > 0) {
@@ -167,18 +168,27 @@ export async function insertReceiptAtomic(input: CreateReceiptInput): Promise<Re
     nextContributionId = Math.max(dbMaxId, clientMax) + 1;
   }
 
-  // Safety check: ensure nextContributionId is unique (does not collide with existing record)
-  const collisionCheck = await db.execute({
-    sql: 'SELECT id FROM receipts WHERE contribution_id = ?',
-    args: [nextContributionId]
-  });
+  const formattedReceiptNo = `YPF-${year}-${String(nextContributionId).padStart(6, '0')}`;
 
-  if (collisionCheck.rows.length > 0 && requested <= 0) {
-    const safeMax = Math.max(dbMaxId, clientMax, nextContributionId);
-    nextContributionId = safeMax + 1;
+  if (requested > 0) {
+    // If record exists with this ID or receipt_no, remove stale record so insert succeeds cleanly
+    await db.execute({
+      sql: 'DELETE FROM receipts WHERE contribution_id = ? OR receipt_no = ?',
+      args: [nextContributionId, formattedReceiptNo]
+    });
+  } else {
+    // Safety check for auto-assigned sequence collision
+    const collisionCheck = await db.execute({
+      sql: 'SELECT id FROM receipts WHERE contribution_id = ? OR receipt_no = ?',
+      args: [nextContributionId, formattedReceiptNo]
+    });
+    if (collisionCheck.rows.length > 0) {
+      const safeMax = Math.max(dbMaxId, clientMax, nextContributionId);
+      nextContributionId = safeMax + 1;
+    }
   }
 
-  const formattedReceiptNo = `YPF-${year}-${String(nextContributionId).padStart(6, '0')}`;
+  const finalReceiptNo = `YPF-${year}-${String(nextContributionId).padStart(6, '0')}`;
   const now = new Date().toISOString();
 
   const insertRes = await db.execute({
@@ -206,7 +216,7 @@ export async function insertReceiptAtomic(input: CreateReceiptInput): Promise<Re
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     args: [
-      formattedReceiptNo,
+      finalReceiptNo,
       nextContributionId,
       input.date,
       input.ac || '',
