@@ -8,12 +8,14 @@ let isInitialized = false;
 export function getDb(): Client {
   if (!client) {
     const isVercel = Boolean(process.env.VERCEL);
-    const tursoUrl = process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL;
+    const rawTursoUrl = process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL;
+    const tursoUrl = rawTursoUrl ? rawTursoUrl.trim() : undefined;
+    const tursoToken = process.env.TURSO_AUTH_TOKEN ? process.env.TURSO_AUTH_TOKEN.trim() : undefined;
 
     if (tursoUrl) {
       client = createClient({
         url: tursoUrl,
-        authToken: process.env.TURSO_AUTH_TOKEN
+        authToken: tursoToken
       });
     } else {
       const dataDir = isVercel ? '/tmp' : path.join(process.cwd(), 'data');
